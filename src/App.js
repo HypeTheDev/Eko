@@ -852,33 +852,7 @@ const App = () => {
         conn.send({ type: 'USERNAME', username: username });
         setConnectionStatus('connected');
       });
-        conn.on('data', (data) => {
-        if (data.type === 'PUBLIC_KEY') {
-          try {
-            const friendPublicKey = BigInt(data.key);
-            // Validate public key is within valid range
-            if (!crypto.validatePublicKey(friendPublicKey)) {
-              console.error('Invalid public key received');
-              setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Invalid public key from peer', sender: 'system' }]);
-              return;
-            }
-            const secret = crypto.computeSharedSecret(privateKeyRef.current, friendPublicKey);
-            setSharedSecret(secret.toString());
-          } catch (error) {
-            console.error('Error during key exchange:', error);
-            setMessages((prevMessages) => [...prevMessages, { text: `[ERROR] Key exchange failed: ${error.message}`, sender: 'system' }]);
-          }
-        } else if (data.type === 'USERNAME') {
-          setFriendUsername(data.username);
-          setMessages((prevMessages) => [...prevMessages, { text: `${data.username} joined the chat`, sender: 'system', timestamp: new Date() }]);
-        } else if (data.type === 'MESSAGE') {
-          const decryptedMessage = JSON.parse(decryptMessage(data.content));
-          setMessages((prevMessages) => [...prevMessages, { ...decryptedMessage, sender: 'friend' }]);
-        } else {
-          const decryptedMessage = decryptMessage(data);
-          setMessages((prevMessages) => [...prevMessages, { text: decryptedMessage, sender: 'friend', timestamp: new Date() }]);
-        }
-      });
+      conn.on('data', (data) => handleIncomingData(data));
     });
 
     // Handle disconnection
@@ -905,6 +879,39 @@ const App = () => {
     } catch (error) {
       console.error('Encryption error:', error);
       throw error;
+    }
+  };
+
+  const handleIncomingData = (data) => {
+    if (data.type === 'PUBLIC_KEY') {
+      try {
+        const friendPublicKey = BigInt(data.key);
+        // Validate public key is within valid range
+        if (!cryptoInstance.current.validatePublicKey(friendPublicKey)) {
+          console.error('Invalid public key received');
+          setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Invalid public key from peer', sender: 'system' }]);
+          return;
+        }
+        const secret = cryptoInstance.current.computeSharedSecret(privateKeyRef.current, friendPublicKey);
+        setSharedSecret(secret.toString());
+      } catch (error) {
+        console.error('Error during key exchange:', error);
+        setMessages((prevMessages) => [...prevMessages, { text: `[ERROR] Key exchange failed: ${error.message}`, sender: 'system' }]);
+      }
+    } else if (data.type === 'USERNAME') {
+      setFriendUsername(data.username);
+      setMessages((prevMessages) => [...prevMessages, { text: `${data.username} joined the chat`, sender: 'system', timestamp: new Date() }]);
+    } else if (data.type === 'MESSAGE') {
+      try {
+        const decryptedMessage = JSON.parse(decryptMessage(data.content));
+        setMessages((prevMessages) => [...prevMessages, { ...decryptedMessage, sender: 'friend' }]);
+      } catch (error) {
+        console.error('Failed to parse incoming message:', error);
+        setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Could not decrypt or parse message.', sender: 'system', timestamp: new Date() }]);
+      }
+    } else {
+      const decryptedMessage = decryptMessage(data);
+      setMessages((prevMessages) => [...prevMessages, { text: decryptedMessage, sender: 'friend', timestamp: new Date() }]);
     }
   };
 
@@ -942,33 +949,10 @@ const App = () => {
       setTimeout(() => gamification.unlockAchievement('ENCRYPTION_EXPERT'), 1000);
     });
     conn.on('data', (data) => {
+      handleIncomingData(data);
+      // Add gamification points for key exchange when connecting to friend
       if (data.type === 'PUBLIC_KEY') {
-        try {
-          const friendPublicKey = BigInt(data.key);
-          // Validate public key is within valid range
-          if (!cryptoInstance.current.validatePublicKey(friendPublicKey)) {
-            console.error('Invalid public key received');
-            setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Invalid public key from peer', sender: 'system' }]);
-            return;
-          }
-          const secret = cryptoInstance.current.computeSharedSecret(privateKeyRef.current, friendPublicKey);
-          setSharedSecret(secret.toString());
-
-          // Gamification: Successful key exchange
-          gamification.addPoints(5, 'Secure key exchange completed');
-        } catch (error) {
-          console.error('Error during key exchange:', error);
-          setMessages((prevMessages) => [...prevMessages, { text: `[ERROR] Key exchange failed: ${error.message}`, sender: 'system' }]);
-        }
-      } else if (data.type === 'USERNAME') {
-        setFriendUsername(data.username);
-        setMessages((prevMessages) => [...prevMessages, { text: `Connected to ${data.username}`, sender: 'system', timestamp: new Date() }]);
-      } else if (data.type === 'MESSAGE') {
-        const decryptedMessage = JSON.parse(decryptMessage(data.content));
-        setMessages((prevMessages) => [...prevMessages, { ...decryptedMessage, sender: 'friend' }]);
-      } else {
-        const decryptedMessage = decryptMessage(data);
-        setMessages((prevMessages) => [...prevMessages, { text: decryptedMessage, sender: 'friend', timestamp: new Date() }]);
+        gamification.addPoints(5, 'Secure key exchange completed');
       }
     });
   };
