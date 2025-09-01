@@ -665,6 +665,85 @@ const UsernameModal = ({ username, setUsername, onClose }) => {
   );
 };
 
+const MatrixWaterfall = ({ color }) => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Matrix characters - combination of different character sets for visual variety
+    const matrixChars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZアァィゥェォカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャュョラリルレロヮワヲンヴ';
+    const fontSize = 14;
+    const columns = canvas.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(0);
+
+    ctx.font = fontSize + 'px monospace';
+
+    const draw = () => {
+      // Semi-transparent black to create fade effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw characters
+      ctx.fillStyle = color + '80'; // Add alpha for subtlety
+      ctx.font = fontSize + 'px monospace';
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+
+        ctx.fillText(text, x, y);
+
+        // Reset drop to top randomly or when it reaches bottom
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+
+        drops[i]++;
+      }
+    };
+
+    const interval = setInterval(draw, 35); // Slightly faster for smoother effect
+
+    // Handle window resize
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [color]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="matrix-waterfall-canvas"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: -10,
+        opacity: 0.12,
+        filter: 'blur(0.5px)', // Added subtle blur
+      }}
+    />
+  );
+};
+
 const ColorPickerModal = ({ onSelectColor, onClose }) => {
   const rainbowColors = [
     '#ff0000', // Red
@@ -1107,6 +1186,7 @@ const App = () => {
 
   return (
     <div className="App">
+      <MatrixWaterfall color={currentColor} />
       {showUsernameModal && (
         <UsernameModal
           username={username}
