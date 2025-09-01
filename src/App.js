@@ -677,21 +677,23 @@ const MatrixWaterfall = ({ color }) => {
     canvas.height = window.innerHeight;
 
     // Matrix characters - combination of different character sets for visual variety
-    const matrixChars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZアァィゥェォカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャュョラリルレロヮワヲンヴ';
-    const fontSize = 14;
+    const matrixChars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャュョラリルレロヮワヲンヴ';
+    const fontSize = 16;
     const columns = canvas.width / fontSize;
     const drops = Array(Math.floor(columns)).fill(0);
 
-    ctx.font = fontSize + 'px monospace';
+    ctx.font = `${fontSize}px 'Courier New', monospace`;
+
+    console.log('MatrixWaterfall: Starting animation with color:', color);
 
     const draw = () => {
       // Semi-transparent black to create fade effect
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Draw characters
-      ctx.fillStyle = color + '80'; // Add alpha for subtlety
-      ctx.font = fontSize + 'px monospace';
+      ctx.fillStyle = color;
+      ctx.font = `${fontSize}px 'Courier New', monospace`;
 
       for (let i = 0; i < drops.length; i++) {
         const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
@@ -701,18 +703,20 @@ const MatrixWaterfall = ({ color }) => {
         ctx.fillText(text, x, y);
 
         // Reset drop to top randomly or when it reaches bottom
-        if (y > canvas.height && Math.random() > 0.975) {
+        if (y > canvas.height && Math.random() > 0.98) {
           drops[i] = 0;
         }
 
-        drops[i]++;
+        drops[i] += fontSize * 0.5;
       }
     };
 
-    const interval = setInterval(draw, 35); // Slightly faster for smoother effect
+    const interval = setInterval(draw, 50); // Adjusted for better performance
 
     // Handle window resize
     const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
@@ -737,8 +741,8 @@ const MatrixWaterfall = ({ color }) => {
         height: '100%',
         pointerEvents: 'none',
         zIndex: -10,
-        opacity: 0.12,
-        filter: 'blur(0.5px)', // Added subtle blur
+        opacity: 0.2,
+        background: 'transparent',
       }}
     />
   );
@@ -1037,8 +1041,20 @@ const App = () => {
         setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Could not decrypt or parse message.', sender: 'system', timestamp: new Date() }]);
       }
     } else {
-      const decryptedMessage = decryptMessage(data);
-      setMessages((prevMessages) => [...prevMessages, { text: decryptedMessage, sender: 'friend', timestamp: new Date() }]);
+      console.warn('Unhandled message type:', data.type, data);
+      // For legacy/unhandled message types, try to decrypt data.content if available, otherwise treat as plain message
+      try {
+        if (data.content) {
+          const decryptedMessage = JSON.parse(decryptMessage(data.content));
+          setMessages((prevMessages) => [...prevMessages, { ...decryptedMessage, sender: 'friend' }]);
+        } else {
+          // Fallback for plain text messages (shouldn't happen in current implementation)
+          setMessages((prevMessages) => [...prevMessages, { text: data.toString(), sender: 'friend', timestamp: new Date() }]);
+        }
+      } catch (error) {
+        console.error('Failed to handle message:', error);
+        setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Could not process message.', sender: 'system', timestamp: new Date() }]);
+      }
     }
   };
 
