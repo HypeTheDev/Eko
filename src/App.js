@@ -748,6 +748,133 @@ const MatrixWaterfall = ({ color }) => {
   );
 };
 
+const WorldChatModal = ({ onClose, username }) => {
+  const [worldChatMessages, setWorldChatMessages] = useState(JSON.parse(localStorage.getItem('world_chat_messages') || '[]'));
+  const [worldChatMessage, setWorldChatMessage] = useState('');
+
+  const handleSendWorldChatMessage = () => {
+    if (!worldChatMessage.trim()) return;
+
+    const newMessage = {
+      id: Date.now(),
+      text: worldChatMessage.trim(),
+      author: username || 'Anonymous',
+      timestamp: new Date(),
+      type: 'global'
+    };
+
+    const updatedMessages = [...worldChatMessages, newMessage].slice(-50); // Keep last 50 messages
+    setWorldChatMessages(updatedMessages);
+    localStorage.setItem('world_chat_messages', JSON.stringify(updatedMessages));
+    setWorldChatMessage('');
+
+    // Gamification: Award points for global chat participation
+    gamification.incrementStat('worldChatMessages');
+    gamification.addPoints(1, 'Participated in World Chat');
+  };
+
+  const handleWorldChatKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSendWorldChatMessage();
+    }
+  };
+
+  return (
+    <div className="world-chat-modal-overlay" onClick={onClose}>
+      <div className="world-chat-modal" onClick={e => e.stopPropagation()}>
+        <h2>🌍 World Chat</h2>
+        <div style={{ marginBottom: '15px', color: '#00ff00', fontSize: '0.9rem', textAlign: 'center' }}>
+          Encrypted global blog - share thoughts with everyone
+        </div>
+
+        {/* World Messages Container */}
+        <div className="world-messages-container" style={{
+          background: '#111111',
+          border: '1px solid #00ff00',
+          padding: '15px',
+          height: '300px',
+          overflowY: 'auto',
+          marginBottom: '15px'
+        }}>
+          {worldChatMessages.length === 0 ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: '#666',
+              textAlign: 'center'
+            }}>
+              <p>🌍 <br />No global messages yet.<br />Be the first to share a thought!</p>
+            </div>
+          ) : (
+            worldChatMessages.map((msg, index) => (
+              <div key={index} style={{
+                marginBottom: '10px',
+                padding: '8px',
+                background: 'rgba(0, 255, 0, 0.05)',
+                borderLeft: '2px solid #00ff00',
+                fontSize: '0.85rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ color: '#00ff00', fontWeight: 'bold' }}>{msg.author}</span>
+                  <span style={{ color: '#666', fontSize: '0.75rem' }}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <div style={{ color: '#ffffff' }}>{msg.text}</div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* World Chat Input */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center'
+        }}>
+          <input
+            type="text"
+            value={worldChatMessage}
+            onChange={(e) => setWorldChatMessage(e.target.value)}
+            onKeyPress={handleWorldChatKeyPress}
+            placeholder="Share a global thought..."
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              border: '1px solid #00ff00',
+              background: '#000000',
+              color: '#00ff00',
+              fontSize: '0.9rem',
+              fontFamily: 'inherit'
+            }}
+          />
+          <button
+            onClick={handleSendWorldChatMessage}
+            disabled={!worldChatMessage.trim()}
+            style={{
+              background: '#000000',
+              color: '#00ff00',
+              border: '1px solid #00ff00',
+              padding: '8px 15px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontFamily: 'inherit'
+            }}
+          >
+            Send 🌍
+          </button>
+        </div>
+
+        <button className="close-button" onClick={onClose}>
+          Close World Chat
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const ColorPickerModal = ({ onSelectColor, onClose, onToggleWaterfall, showWaterfall }) => {
   const rainbowColors = [
     '#ff0000', // Red
@@ -781,7 +908,7 @@ const ColorPickerModal = ({ onSelectColor, onClose, onToggleWaterfall, showWater
                 onClick={() => handleColorSelect(color)}
                 title={color}
               />
-            ))}
+            })}
           </div>
         </div>
 
@@ -858,6 +985,7 @@ const App = () => {
 
   // World news state
   const [showWorldNews, setShowWorldNews] = useState(false);
+  const [showWorldChat, setShowWorldChat] = useState(false);
 
   // Color theme state
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -1369,6 +1497,13 @@ const App = () => {
         />
       )}
 
+      {showWorldChat && (
+        <WorldChatModal
+          onClose={() => setShowWorldChat(false)}
+          username={username}
+        />
+      )}
+
       <GamificationNotification
         notification={recentNotification}
         onClose={() => setRecentNotification(null)}
@@ -1385,6 +1520,9 @@ const App = () => {
             </button>
             <button className="gamification-button achievements-button" onClick={handleShowAchievements}>
               🏆 {unlockedAchievements.length}
+            </button>
+            <button className="gamification-button" onClick={() => setShowWorldChat(true)}>
+              🌍 Chat
             </button>
             <button className="gamification-button" onClick={() => setShowWorldNews(true)}>
               📰 News
