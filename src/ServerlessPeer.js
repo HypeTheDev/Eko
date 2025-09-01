@@ -22,8 +22,12 @@ class AlbertCrypto {
     }
 
     generatePrivateKey() {
-        // In a real application, use a cryptographically secure random number generator
-        const privateKey = BigInt(Math.floor(Math.random() * 1000000000));
+        // Use cryptographically secure random number generator
+        const array = new Uint32Array(4);
+        crypto.getRandomValues(array);
+        // Convert to BigInt and ensure it's less than p-1
+        let privateKey = BigInt(array[0]) | (BigInt(array[1]) << BigInt(32)) | (BigInt(array[2]) << BigInt(64)) | (BigInt(array[3]) << BigInt(96));
+        privateKey = privateKey % (this.p - BigInt(1)) + BigInt(1); // Ensure private key is between 1 and p-1
         return privateKey;
     }
 
@@ -32,7 +36,20 @@ class AlbertCrypto {
     }
 
     computeSharedSecret(privateKey, otherPublicKey) {
-        return this.power(otherPublicKey, privateKey);
+        const sharedSecret = this.power(otherPublicKey, privateKey);
+        // Validate that shared secret is not 0, 1, or p-1 (small subgroup attack prevention)
+        if (sharedSecret === BigInt(0) || sharedSecret === BigInt(1) || sharedSecret === this.p - BigInt(1)) {
+            throw new Error('Invalid shared secret - possible small subgroup attack');
+        }
+        return sharedSecret;
+    }
+
+    validatePublicKey(publicKey) {
+        // Ensure public key is within valid range for Diffie-Hellman
+        if (publicKey < BigInt(2) || publicKey >= this.p - BigInt(1)) {
+            return false;
+        }
+        return true;
     }
 }
 
