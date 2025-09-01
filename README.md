@@ -29,13 +29,66 @@ cd Eko
 npm install
 ```
 
-### Basic Usage
+### Basic Usage (with PeerJS limitations)
 
 ```bash
 npm start
 ```
 
 Open `http://localhost:3000` in your browser.
+
+### Full Usage - No Restrictions
+
+For unlimited peer-to-peer connections with no PeerJS server limitations:
+
+#### Option 1: Simple Full Stack (Recommended)
+
+```bash
+# Start both the PeerJS server and React app in parallel
+npm run dev:full
+```
+
+This starts:
+- PeerJS signaling server on `http://localhost:9000`
+- React app on `http://localhost:3000`
+
+#### Option 2: Manual Setup
+
+**Terminal 1: Start PeerJS Server**
+```bash
+npm run peer-server
+```
+
+**Terminal 2: Start React App**
+```bash
+npm start
+```
+
+#### Option 3: Production Deployment
+
+1. **Deploy PeerJS server:**
+   ```bash
+   docker run -p 80:80 -d peerjs/peerjs-server
+   ```
+
+2. **Configure environment:**
+   ```bash
+   # Copy and modify .env.local
+   cp .env.local .env.production.local
+   # Edit .env.production.local with your server URLs
+   ```
+
+3. **Build and deploy:**
+   ```bash
+   npm run build
+   # Deploy build/ folder to your web server
+   ```
+
+### Configuration Options
+
+- **Local Development:** Uses `.env.local` (automatically detected by React)
+- **Production:** Use `.env.production.local`
+- **Custom Servers:** Edit the environment variables in `.env.local` file
 
 ### Using Custom PeerJS Server
 
@@ -100,26 +153,46 @@ The application uses a custom Diffie-Hellman key exchange with:
 
 ### Environment Variables
 
+Edit the `.env.local` file in the project root to configure your environment:
+
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `REACT_APP_USE_LOCAL_PEER_SERVER` | Use local PeerJS server | `false` |
 | `REACT_APP_PEERJS_HOST` | Custom PeerJS server hostname | PeerJS public server |
 | `REACT_APP_PEERJS_PORT` | Server port | 443 |
-| `REACT_APP_PEERJS_PATH` | Server path | `/myapp` |
+| `REACT_APP_PEERJS_PATH` | Server path | `/signaling` |
+| `REACT_APP_PEERJS_KEY` | Server authentication key | `peerjs` |
+| `REACT_APP_PEERJS_DEBUG` | Enable detailed connection logging | `false` |
+| `REACT_APP_DEFAULT_THEME` | Default theme color | `#00ff00` |
+| `REACT_APP_MATRIX_WATERFALL` | Enable Matrix waterfall effect | `true` |
 
-### Example Configurations
+### Configuration Examples
 
-**Local Development:**
+**Local Development (No Restrictions):**
 ```
+REACT_APP_USE_LOCAL_PEER_SERVER=true
+# No other configuration needed - uses localhost:9000 automatically
+```
+
+**Custom Local Server:**
+```
+REACT_APP_USE_LOCAL_PEER_SERVER=true
 REACT_APP_PEERJS_HOST=localhost
-REACT_APP_PEERJS_PORT=9000
-REACT_APP_PEERJS_PATH=/myapp
+REACT_APP_PEERJS_PORT=8080
+REACT_APP_PEERJS_PATH=/my-signaling
 ```
 
-**Production Server:**
+**Production Hosted Server:**
 ```
-REACT_APP_PEERJS_HOST=p2p.mydomain.com
-REACT_APP_PEERJS_PORT=80
-REACT_APP_PEERJS_PATH=
+REACT_APP_PEERJS_HOST=p2p.yourdomain.com
+REACT_APP_PEERJS_PORT=443
+REACT_APP_PEERJS_PATH=/signaling
+REACT_APP_PEERJS_KEY=your-secret-key
+```
+
+**Debug Mode:**
+```
+REACT_APP_PEERJS_DEBUG=true
 ```
 
 ## 🔧 Deployment

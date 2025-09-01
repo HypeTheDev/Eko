@@ -951,14 +951,36 @@ const App = () => {
 
   useEffect(() => {
     const peerOptions = {};
-    if (process.env.REACT_APP_PEERJS_HOST) {
-      peerOptions.host = process.env.REACT_APP_PEERJS_HOST;
+
+    // Check if using local PeerJS server via environment variables
+    const useLocalServer = process.env.REACT_APP_USE_LOCAL_PEER_SERVER === 'true';
+
+    if (useLocalServer) {
+      // Local PeerJS server configuration
+      peerOptions.host = 'localhost';
+      peerOptions.port = 9000;
+      peerOptions.path = '/signaling';
+      peerOptions.secure = false; // Local server typically runs without HTTPS
+      peerOptions.key = process.env.REACT_APP_PEERJS_KEY || 'peerjs';
+      console.log('🌴 Using local PeerJS server at localhost:9000');
+    } else {
+      // Public PeerJS server (with fallback options for custom host)
+      if (process.env.REACT_APP_PEERJS_HOST) {
+        peerOptions.host = process.env.REACT_APP_PEERJS_HOST;
+        peerOptions.port = parseInt(process.env.REACT_APP_PEERJS_PORT) || 443;
+        peerOptions.secure = true;
+        peerOptions.path = process.env.REACT_APP_PEERJS_PATH || '/';
+        peerOptions.key = process.env.REACT_APP_PEERJS_KEY || 'peerjs';
+        console.log(`🌴 Using custom PeerJS server at ${peerOptions.host}:${peerOptions.port}`);
+      } else {
+        // Default to public PeerJS server (if available)
+        console.log('🌴 Using public PeerJS server (may have limitations)');
+      }
     }
-    if (process.env.REACT_APP_PEERJS_PORT) {
-      peerOptions.port = parseInt(process.env.REACT_APP_PEERJS_PORT);
-    }
-    if (process.env.REACT_APP_PEERJS_PATH) {
-      peerOptions.path = process.env.REACT_APP_PEERJS_PATH;
+
+    // Add debug configuration if enabled
+    if (process.env.REACT_APP_PEERJS_DEBUG === 'true') {
+      peerOptions.debug = 3;
     }
 
     const peer = new Peer(peerOptions);
@@ -1014,48 +1036,113 @@ const App = () => {
   };
 
   const handleIncomingData = (data) => {
+    // Validate incoming data structure
+    if (!data || typeof data !== 'object') {
+      console.error('Invalid data structure received:', data);
+      setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Received invalid message structure', sender: 'system', timestamp: new Date() }]);
+      return;
+    }
+
+    // Add timeout protection
+    const timeoutId = setTimeout(() => {
+      console.error('Message processing timeout for data:', data);
+      setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Message processing timeout - possible corrupted data', sender: 'system', timestamp: new Date() }]);
+    }, 5000); // 5 second timeout
+
     if (data.type === 'PUBLIC_KEY') {
       try {
+        if (!data.key) {
+          throw new Error('Missing public key in data');
+        }
         const friendPublicKey = BigInt(data.key);
         // Validate public key is within valid range
         if (!cryptoInstance.current.validatePublicKey(friendPublicKey)) {
           console.error('Invalid public key received');
-          setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Invalid public key from peer', sender: 'system' }]);
+          setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Invalid public key from peer', sender: 'system', timestamp: new Date() }]);
           return;
         }
         const secret = cryptoInstance.current.computeSharedSecret(privateKeyRef.current, friendPublicKey);
         setSharedSecret(secret.toString());
       } catch (error) {
         console.error('Error during key exchange:', error);
-        setMessages((prevMessages) => [...prevMessages, { text: `[ERROR] Key exchange failed: ${error.message}`, sender: 'system' }]);
+        setMessages((prevMessages) => [...prevMessages, { text: `[ERROR] Key exchange failed: ${error.message}`, sender: 'system', timestamp: new Date() }]);
       }
     } else if (data.type === 'USERNAME') {
+      if (!data.username || typeof data.username !== 'string') {
+        console.error('Invalid username received:', data);
+        setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Invalid username format', sender: 'system', timestamp: new Date() }]);
+        return;
+      }
       setFriendUsername(data.username);
       setMessages((prevMessages) => [...prevMessages, { text: `${data.username} joined the chat`, sender: 'system', timestamp: new Date() }]);
     } else if (data.type === 'MESSAGE') {
       try {
-        const decryptedMessage = JSON.parse(decryptMessage(data.content));
+        if (!data.content) {
+          throw new Error('Message missing content field');
+        }
+
+        let decryptedText;
+        try {
+          decryptedText = decryptMessage(data.content);
+          if (decryptedText.startsWith('[DECRYPTION ERROR:')) {
+            throw new Error(decryptedText.replace('[DECRYPTION ERROR: ', '').replace(']', ''));
+          }
+        } catch (decryptError) {
+          throw new Error(`Decryption failed: ${decryptError.message}`);
+        }
+
+        let decryptedMessage;
+        try {
+          decryptedMessage = JSON.parse(decryptedText);
+        } catch (jsonError) {
+          throw new Error(`JSON parsing failed: ${jsonError.message}. Raw data: ${decryptedText.substring(0, 100)}...`);
+        }
+
+        // Validate message structure
+        if (!decryptedMessage || typeof decryptedMessage !== 'object') {
+          throw new Error('Invalid message structure after decryption');
+        }
+
         setMessages((prevMessages) => [...prevMessages, { ...decryptedMessage, sender: 'friend' }]);
       } catch (error) {
-        console.error('Failed to parse incoming message:', error);
-        setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Could not decrypt or parse message.', sender: 'system', timestamp: new Date() }]);
+        console.error('Failed to process incoming message:', error);
+        setMessages((prevMessages) => [...prevMessages, { text: `[ERROR] Could not decrypt or parse message: ${error.message}`, sender: 'system', timestamp: new Date() }]);
       }
     } else {
       console.warn('Unhandled message type:', data.type, data);
       // For legacy/unhandled message types, try to decrypt data.content if available, otherwise treat as plain message
       try {
         if (data.content) {
-          const decryptedMessage = JSON.parse(decryptMessage(data.content));
+          let decryptedText;
+          try {
+            decryptedText = decryptMessage(data.content);
+            if (decryptedText.startsWith('[DECRYPTION ERROR:')) {
+              throw new Error(decryptedText.replace('[DECRYPTION ERROR: ', '').replace(']', ''));
+            }
+          } catch (decryptError) {
+            throw new Error(`Decryption failed: ${decryptError.message}`);
+          }
+
+          let decryptedMessage;
+          try {
+            decryptedMessage = JSON.parse(decryptedText);
+          } catch (jsonError) {
+            throw new Error(`JSON parsing failed: ${jsonError.message}`);
+          }
+
           setMessages((prevMessages) => [...prevMessages, { ...decryptedMessage, sender: 'friend' }]);
         } else {
           // Fallback for plain text messages (shouldn't happen in current implementation)
           setMessages((prevMessages) => [...prevMessages, { text: data.toString(), sender: 'friend', timestamp: new Date() }]);
         }
       } catch (error) {
-        console.error('Failed to handle message:', error);
-        setMessages((prevMessages) => [...prevMessages, { text: '[ERROR] Could not process message.', sender: 'system', timestamp: new Date() }]);
+        console.error('Failed to handle legacy message:', error);
+        setMessages((prevMessages) => [...prevMessages, { text: `[ERROR] Could not process legacy message: ${error.message}`, sender: 'system', timestamp: new Date() }]);
       }
     }
+
+    // Clear timeout since processing completed successfully
+    clearTimeout(timeoutId);
   };
 
   const decryptMessage = (encryptedMessage) => {
@@ -1063,15 +1150,18 @@ const App = () => {
       if (!sharedSecret) {
         throw new Error('No shared secret available for decryption');
       }
+      if (!encryptedMessage || typeof encryptedMessage !== 'string' || encryptedMessage.trim() === '') {
+        throw new Error('Invalid encrypted message format');
+      }
       const bytes = CryptoJS.AES.decrypt(encryptedMessage, sharedSecret);
       const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-      if (!decryptedText) {
+      if (!decryptedText || decryptedText.trim() === '') {
         throw new Error('Decryption failed or resulted in empty message');
       }
       return decryptedText;
     } catch (error) {
       console.error('Decryption error:', error);
-      return '[DECRYPTION ERROR]';
+      return `[DECRYPTION ERROR: ${error.message}]`;
     }
   };
 
