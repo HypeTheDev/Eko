@@ -744,7 +744,7 @@ const MatrixWaterfall = ({ color }) => {
   );
 };
 
-const ColorPickerModal = ({ onSelectColor, onClose }) => {
+const ColorPickerModal = ({ onSelectColor, onClose, onToggleWaterfall, showWaterfall }) => {
   const rainbowColors = [
     '#ff0000', // Red
     '#ff8000', // Orange
@@ -763,20 +763,59 @@ const ColorPickerModal = ({ onSelectColor, onClose }) => {
   return (
     <div className="color-picker-modal-overlay">
       <div className="color-picker-modal">
-        <h2>Choose Rainbow Color</h2>
-        <div className="color-picker-grid">
-          {rainbowColors.map((color, index) => (
-            <button
-              key={index}
-              className="color-option"
-              style={{ backgroundColor: color }}
-              onClick={() => handleColorSelect(color)}
-              title={color}
-            />
-          ))}
+        <h2>Theme Settings</h2>
+
+        {/* Rainbow Color Picker */}
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ color: '#00ff00', marginBottom: '10px' }}>Choose Theme Color</h3>
+          <div className="color-picker-grid">
+            {rainbowColors.map((color, index) => (
+              <button
+                key={index}
+                className="color-option"
+                style={{ backgroundColor: color }}
+                onClick={() => handleColorSelect(color)}
+                title={color}
+              />
+            ))}
+          </div>
         </div>
+
+        {/* Waterfall Toggle */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '15px',
+          border: '1px solid #00ff00',
+          backgroundColor: '#000000',
+          marginBottom: '15px'
+        }}>
+          <div>
+            <h4 style={{ color: '#00ff00', margin: '0 0 5px 0' }}>Matrix Waterfall</h4>
+            <p style={{ color: '#aaa', margin: 0, fontSize: '0.9em' }}>
+              Classic Matrix-style background animation
+            </p>
+          </div>
+          <button
+            onClick={onToggleWaterfall}
+            style={{
+              backgroundColor: showWaterfall ? '#00ff00' : '#333',
+              color: showWaterfall ? '#000000' : '#00ff00',
+              border: '1px solid #00ff00',
+              padding: '8px 15px',
+              cursor: 'pointer',
+              borderRadius: '4px',
+              fontSize: '0.9em',
+              minWidth: '60px'
+            }}
+          >
+            {showWaterfall ? 'ON' : 'OFF'}
+          </button>
+        </div>
+
         <button className="close-button" onClick={onClose}>
-          Cancel
+          Close Settings
         </button>
       </div>
     </div>
@@ -819,12 +858,21 @@ const App = () => {
   // Color theme state
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [currentColor, setCurrentColor] = useState('#00ff00');
+  const [showWaterfall, setShowWaterfall] = useState(true);
 
   useEffect(() => {
     // Initialize color theme from localStorage
     const storedColor = localStorage.getItem('theme_color') || '#00ff00';
     setCurrentColor(storedColor);
     document.documentElement.style.setProperty('--primary-color', storedColor);
+
+    // Initialize waterfall setting from localStorage
+    const waterfallEnabled = localStorage.getItem('matrix_waterfall');
+    if (waterfallEnabled !== null) {
+      setShowWaterfall(waterfallEnabled === 'true');
+    } else {
+      setShowWaterfall(true); // Default to enabled
+    }
   }, []);
 
   // Register Service Worker for PWA
@@ -1169,6 +1217,12 @@ const App = () => {
     document.documentElement.style.setProperty('--primary-color', color);
   };
 
+  const handleToggleWaterfall = () => {
+    const newValue = !showWaterfall;
+    setShowWaterfall(newValue);
+    localStorage.setItem('matrix_waterfall', newValue.toString());
+  };
+
   const formatTime = (timestamp) => {
     return timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   };
@@ -1186,7 +1240,7 @@ const App = () => {
 
   return (
     <div className="App">
-      <MatrixWaterfall color={currentColor} />
+      {showWaterfall && <MatrixWaterfall color={currentColor} />}
       {showUsernameModal && (
         <UsernameModal
           username={username}
@@ -1365,6 +1419,8 @@ const App = () => {
         <ColorPickerModal
           onSelectColor={handleChooseColor}
           onClose={() => setShowColorPicker(false)}
+          onToggleWaterfall={handleToggleWaterfall}
+          showWaterfall={showWaterfall}
         />
       )}
     </div>
