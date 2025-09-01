@@ -938,15 +938,6 @@ const App = () => {
         setTimeout(() => setRecentNotification(null), 6000);
       }
     });
-
-    // Show welcome challenge on first visit
-    const hasCompletedWelcome = localStorage.getItem('welcome_challenge_shown');
-    if (!hasCompletedWelcome) {
-      setTimeout(() => {
-        setShowDailyChallenge(true);
-        localStorage.setItem('welcome_challenge_shown', 'true');
-      }, 2000);
-    }
   }, []);
 
   useEffect(() => {
