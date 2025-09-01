@@ -116,40 +116,68 @@ export const DAILY_ACTIVITY_TYPES = {
 };
 
 export const DAILY_CHALLENGES = {
-  CHAT_INITIATE: {
-    id: 'chat_initiate',
-    title: 'Ice Breaker',
-    description: 'Start a conversation with someone new',
+  KINDNESS_CHAMPION: {
+    id: 'kindness_champion',
+    title: 'Kindness Champion',
+    description: 'Spread positivity by sending kind, encouraging messages to friends',
+    reward: 35,
+    emoji: '💝',
+    requirement: 5,
+    completionMessage: 'Your kindness is creating waves of positivity! 🌊'
+  },
+  CONNECTION_BUILDER: {
+    id: 'connection_builder',
+    title: 'Connection Builder',
+    description: 'Reach out to make someone feel heard and valued',
     reward: 30,
-    emoji: '❄️'
+    emoji: '🤝',
+    requirement: 3,
+    completionMessage: 'You\'re building bridges of friendship! 🌉'
   },
-  EMOJI_FEST: {
-    id: 'emoji_fest',
-    title: 'Emoji Party',
-    description: 'Send messages with at least 5 emojis',
+  GRATITUDE_SHARER: {
+    id: 'gratitude_sharer',
+    title: 'Gratitude Sharer',
+    description: 'Express appreciation for someone or something in your daily share',
+    reward: 25,
+    emoji: '🙏',
+    requirement: 2,
+    completionMessage: 'Gratitude is magic - you\'re spreading it beautifully! ✨'
+  },
+  CREATIVITY_SPARK: {
+    id: 'creativity_spark',
+    title: 'Creativity Spark',
+    description: 'Share something creative - art, music, writing, or your unique perspective',
     reward: 40,
-    emoji: '🎉'
+    emoji: '🎨',
+    requirement: 2,
+    completionMessage: 'Your creativity lights up this community! ✨'
   },
-  MARATHON_CHATTER: {
-    id: 'marathon_chatter',
-    title: 'Marathon Chatter',
-    description: 'Send 20 messages in a day',
-    reward: 60,
-    emoji: '🏃‍♂️'
+  SELF_LOVE_MOMENT: {
+    id: 'self_love_moment',
+    title: 'Self-Love Moment',
+    description: 'Celebrate your accomplishments and give yourself credit today',
+    reward: 30,
+    emoji: '🌟',
+    requirement: 1,
+    completionMessage: 'You are amazing! Keep shining bright! 🌟'
   },
-  DAILY_PING: {
-    id: 'daily_ping',
-    title: 'Daily Contributor',
-    description: 'Share a daily fact, song, album, art, or quote',
-    reward: 50,
-    emoji: '🎯'
+  GROWTH_MINDSET: {
+    id: 'growth_mindset',
+    title: 'Growth Mindset',
+    description: 'Share what you learned today - challenges conquered, lessons learned',
+    reward: 35,
+    emoji: '🌱',
+    requirement: 1,
+    completionMessage: 'Growth is your superpower! You\'re evolving beautifully! 🌱'
   },
-  CULTURE_SHARER: {
-    id: 'culture_sharer',
-    title: 'Culture Sharer',
-    description: 'Share 5 different types of daily content',
-    reward: 100,
-    emoji: '🌍'
+  SUPPORTIVE_FRIEND: {
+    id: 'supportive_friend',
+    title: 'Supportive Friend',
+    description: 'Offer encouragement or acts of compassion to those around you',
+    reward: 30,
+    emoji: '🤗',
+    requirement: 3,
+    completionMessage: 'Your support matters more than you know! 🤗'
   }
 };
 
@@ -265,9 +293,15 @@ export class GamificationManager {
 
       // Check if challenge completed
       const challengeData = DAILY_CHALLENGES[challenge.id];
-      if (challenge.progress >= challengeData.requirement || true) { // Simplified completion logic
+      if (challenge.progress >= challengeData.requirement) {
         challenge.completed = true;
         this.addPoints(challengeData.reward, `Daily Challenge: ${challengeData.title}`);
+
+        // Trigger challenge completion callback
+        this.callbacks.forEach(callback => {
+          callback.onChallengeCompleted?.(challenge.id, challengeData);
+        });
+
         return true; // Challenge completed
       }
     }

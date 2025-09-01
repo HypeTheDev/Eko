@@ -1,25 +1,88 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Eko",
+  "name": "🌴 Eko - Encrypted Messenger & Friend Builder",
+  "description": "Secure, encrypted messenger with daily affirmations and gamification. Experience daily challenges, build meaningful connections, and celebrate your progress in a stunning terminal-themed interface.",
   "icons": [
     {
       "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "type": "image/x-icon",
+      "purpose": "any"
     },
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait-primary",
+  "theme_color": "#00ff00",
+  "background_color": "#000000",
+  "scope": "/",
+  "categories": ["social", "communication", "lifestyle", "productivity"],
+  "screenshots": [
+    {
+      "src": "screenshot-mobile.png",
+      "sizes": "640x320",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Daily Challenge",
+      "short_name": "Challenge",
+      "description": "Check your daily positive affirmation challenge",
+      "url": "/?action=daily-challenge",
+      "icons": [
+        {
+          "src": "logo192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Achievements",
+      "short_name": "Trophies",
+      "description": "View your progress and achievements",
+      "url": "/?action=achievements",
+      "icons": [
+        {
+          "src": "logo192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/?share=true",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "video/*"]
+        }
+      ]
+    }
+  }
 }

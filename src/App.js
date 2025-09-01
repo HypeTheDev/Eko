@@ -665,6 +665,45 @@ const UsernameModal = ({ username, setUsername, onClose }) => {
   );
 };
 
+const ColorPickerModal = ({ onSelectColor, onClose }) => {
+  const rainbowColors = [
+    '#ff0000', // Red
+    '#ff8000', // Orange
+    '#ffff00', // Yellow
+    '#00ff00', // Green
+    '#0080ff', // Blue
+    '#8000ff', // Indigo
+    '#ff00ff'  // Violet
+  ];
+
+  const handleColorSelect = (color) => {
+    onSelectColor(color);
+    onClose();
+  };
+
+  return (
+    <div className="color-picker-modal-overlay">
+      <div className="color-picker-modal">
+        <h2>Choose Rainbow Color</h2>
+        <div className="color-picker-grid">
+          {rainbowColors.map((color, index) => (
+            <button
+              key={index}
+              className="color-option"
+              style={{ backgroundColor: color }}
+              onClick={() => handleColorSelect(color)}
+              title={color}
+            />
+          ))}
+        </div>
+        <button className="close-button" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   const [peerId, setPeerId] = useState('');
   const [friendId, setFriendId] = useState('');
@@ -698,6 +737,32 @@ const App = () => {
   // World news state
   const [showWorldNews, setShowWorldNews] = useState(false);
 
+  // Color theme state
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [currentColor, setCurrentColor] = useState('#00ff00');
+
+  useEffect(() => {
+    // Initialize color theme from localStorage
+    const storedColor = localStorage.getItem('theme_color') || '#00ff00';
+    setCurrentColor(storedColor);
+    document.documentElement.style.setProperty('--primary-color', storedColor);
+  }, []);
+
+  // Register Service Worker for PWA
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('🌴 Eko Service Worker registered:', registration);
+          })
+          .catch((error) => {
+            console.log('🌴 Eko Service Worker registration failed:', error);
+          });
+      });
+    }
+  }, []);
+
   useEffect(() => {
     // Initialize username from localStorage
     const storedUsername = localStorage.getItem('username');
@@ -720,7 +785,16 @@ const App = () => {
           title: `+${addedPoints} Points!`,
           description: reason
         });
-        setTimeout(() => setRecentNotification(null), 3000);
+        setTimeout(() => setRecentNotification(null), 4000);
+      },
+      onChallengeCompleted: (challengeId, challengeData) => {
+        playSound('achievement');
+        setRecentNotification({
+          icon: '🌟',
+          title: 'Daily Challenge Completed!',
+          description: challengeData.completionMessage
+        });
+        setTimeout(() => setRecentNotification(null), 6000);
       },
       onAchievementUnlock: (achievementId, achievement) => {
         setUnlockedAchievements(prev => [...prev, achievementId]);
@@ -730,12 +804,18 @@ const App = () => {
           title: 'Achievement Unlocked!',
           description: achievement.title
         });
-        setTimeout(() => setRecentNotification(null), 5000);
+        setTimeout(() => setRecentNotification(null), 6000);
       }
     });
 
-    // Daily challenge is now accessible via the points button
-    // setTimeout(() => setShowDailyChallenge(true), 1000);
+    // Show welcome challenge on first visit
+    const hasCompletedWelcome = localStorage.getItem('welcome_challenge_shown');
+    if (!hasCompletedWelcome) {
+      setTimeout(() => {
+        setShowDailyChallenge(true);
+        localStorage.setItem('welcome_challenge_shown', 'true');
+      }, 2000);
+    }
   }, []);
 
   useEffect(() => {
@@ -1020,6 +1100,12 @@ const App = () => {
     }
   };
 
+  const handleChooseColor = (color) => {
+    setCurrentColor(color);
+    localStorage.setItem('theme_color', color);
+    document.documentElement.style.setProperty('--primary-color', color);
+  };
+
   const formatTime = (timestamp) => {
     return timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   };
@@ -1084,6 +1170,9 @@ const App = () => {
             </button>
             <button className="gamification-button" onClick={() => setShowWorldNews(true)}>
               📰 News
+            </button>
+            <button className="gamification-button color-button" onClick={() => setShowColorPicker(true)}>
+              🎨 Theme
             </button>
           </div>
           <span className="username-display">{username}</span>
@@ -1206,6 +1295,13 @@ const App = () => {
             Close News
           </button>
         </div>
+      )}
+
+      {showColorPicker && (
+        <ColorPickerModal
+          onSelectColor={handleChooseColor}
+          onClose={() => setShowColorPicker(false)}
+        />
       )}
     </div>
   );
