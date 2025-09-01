@@ -1080,6 +1080,9 @@ const App = () => {
         if (!data.content) {
           throw new Error('Message missing content field');
         }
+        if (!sharedSecret) {
+          throw new Error('Secure connection not established');
+        }
 
         let decryptedText;
         try {
@@ -1112,7 +1115,7 @@ const App = () => {
       console.warn('Unhandled message type:', data.type, data);
       // For legacy/unhandled message types, try to decrypt data.content if available, otherwise treat as plain message
       try {
-        if (data.content) {
+        if (data.content && sharedSecret) {
           let decryptedText;
           try {
             decryptedText = decryptMessage(data.content);
