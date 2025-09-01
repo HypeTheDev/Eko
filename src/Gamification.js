@@ -70,6 +70,51 @@ export const ACHIEVEMENTS = {
   }
 };
 
+export const DAILY_ACTIVITY_TYPES = {
+  FACT: {
+    id: 'fact',
+    title: 'Daily Fact',
+    description: 'Share an interesting historical fact',
+    icon: '📜',
+    points: 10
+  },
+  SONG: {
+    id: 'song',
+    title: 'Daily Song',
+    description: 'Share your favorite song and why you love it',
+    icon: '🎵',
+    points: 15
+  },
+  ALBUM: {
+    id: 'album',
+    title: 'Daily Album',
+    description: 'Recommend an album that changed everything for you',
+    icon: '💿',
+    points: 20
+  },
+  ART: {
+    id: 'art',
+    title: 'Daily Art',
+    description: 'Share beautiful artwork, your own or your favorite',
+    icon: '🎨',
+    points: 15
+  },
+  QUOTE: {
+    id: 'quote',
+    title: 'Daily Quote',
+    description: 'Share an inspiring quote that resonates with you',
+    icon: '💭',
+    points: 10
+  },
+  MOMENT: {
+    id: 'moment',
+    title: 'Daily Moment',
+    description: 'Share a meaningful moment from your day',
+    icon: '🌟',
+    points: 12
+  }
+};
+
 export const DAILY_CHALLENGES = {
   CHAT_INITIATE: {
     id: 'chat_initiate',
@@ -91,6 +136,20 @@ export const DAILY_CHALLENGES = {
     description: 'Send 20 messages in a day',
     reward: 60,
     emoji: '🏃‍♂️'
+  },
+  DAILY_PING: {
+    id: 'daily_ping',
+    title: 'Daily Contributor',
+    description: 'Share a daily fact, song, album, art, or quote',
+    reward: 50,
+    emoji: '🎯'
+  },
+  CULTURE_SHARER: {
+    id: 'culture_sharer',
+    title: 'Culture Sharer',
+    description: 'Share 5 different types of daily content',
+    reward: 100,
+    emoji: '🌍'
   }
 };
 

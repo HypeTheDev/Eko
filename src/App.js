@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Peer from 'peerjs';
 import * as CryptoJS from 'crypto-js';
 import AlbertCrypto from './ServerlessPeer';
-import { gamification, ACHIEVEMENTS, DAILY_CHALLENGES, playSound, processEmojiText } from './Gamification';
+import { gamification, ACHIEVEMENTS, DAILY_CHALLENGES, DAILY_ACTIVITY_TYPES, playSound, processEmojiText } from './Gamification';
+
+import WorldNewsBlog from './WorldNewsBlog';
 import './App.css';
 
 const AchievementModal = ({ unlockedAchievements, onClose }) => {
@@ -55,9 +57,192 @@ const AchievementModal = ({ unlockedAchievements, onClose }) => {
   );
 };
 
+const DailyComposer = ({ onClose, username, onShare, selectedType, setSelectedType }) => {
+  const [content, setContent] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (content.trim()) {
+      const newShare = {
+        id: Date.now(),
+        type: selectedType,
+        content: content.trim(),
+        author: username,
+        timestamp: new Date(),
+        likes: 0,
+        liked: false
+      };
+      onShare(newShare);
+      setContent('');
+      onClose();
+    }
+  };
+
+  const currentType = DAILY_ACTIVITY_TYPES[selectedType.toUpperCase()];
+
+  return (
+    <div className="daily-composer-overlay" onClick={onClose}>
+      <div className="daily-composer" onClick={e => e.stopPropagation()}>
+        <h2>Create Daily Share</h2>
+
+        <div className="type-selector">
+          {Object.values(DAILY_ACTIVITY_TYPES).map(type => (
+            <button
+              key={type.id}
+              className={`type-button ${selectedType === type.id ? 'active' : ''}`}
+              onClick={() => setSelectedType(type.id)}
+            >
+              <span className="type-icon">{type.icon}</span>
+              <span className="type-title">{type.title}</span>
+            </button>
+          ))}
+        </div>
+
+        {currentType && (
+          <div className="type-description">
+            <h3>{currentType.icon} {currentType.title}</h3>
+            <p>{currentType.description}</p>
+            <div className="reward-preview">Reward: {currentType.points} points</div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Share something meaningful..."
+            rows={4}
+            maxLength={500}
+            required
+          />
+          <div className="composer-actions">
+            <button type="button" className="cancel-button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="submit-button" disabled={!content.trim()}>
+              Share Daily ({currentType?.points || 0} pts)
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const DailyFeed = ({ onClose, dailyShares, onLike, onComposeNew }) => {
+  const [shares, setShares] = useState([]);
+
+  useEffect(() => {
+    setShares([...dailyShares].reverse()); // Show most recent first
+  }, [dailyShares]);
+
+  return (
+    <div className="daily-feed-overlay" onClick={onClose}>
+      <div className="daily-feed" onClick={e => e.stopPropagation()}>
+        <div className="feed-header">
+          <h2>🌟 Daily Feed</h2>
+          <button className="compose-new" onClick={() => {
+            onClose();
+            onComposeNew();
+          }}>
+            ✍️ Share Something
+          </button>
+        </div>
+
+        <div className="feed-content">
+          {shares.length === 0 ? (
+            <div className="empty-feed">
+              <p>No daily shares yet. Be the first to share something meaningful!</p>
+            </div>
+          ) : (
+            shares.map(share => {
+              const typeData = DAILY_ACTIVITY_TYPES[share.type.toUpperCase()] || DAILY_ACTIVITY_TYPES.FACT;
+              return (
+                <div key={share.id} className="daily-share">
+                  <div className="share-header">
+                    <div className="share-author">
+                      <span className="author-name">{share.author}</span>
+                      <span className="share-type">{typeData.icon} {typeData.title}</span>
+                    </div>
+                    <div className="share-time">
+                      {new Date(share.timestamp).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="share-content">
+                    <p>{share.content}</p>
+                  </div>
+                  <div className="share-footer">
+                    <button
+                      className={`like-button ${share.liked ? 'liked' : ''}`}
+                      onClick={() => onLike(share.id)}
+                    >
+                      ❤️ {share.likes}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <button className="close-feed" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const DailyDropdownMenu = ({ onClose, onShowFeed, onShowComposer, onShowChallenge }) => {
+  return (
+    <div className="daily-dropdown" onClick={(e) => e.stopPropagation()}>
+      <button className="dropdown-item" onClick={() => {
+        onShowFeed();
+        onClose();
+      }}>
+        <span className="dropdown-icon">📚</span>
+        <span>View Daily Feed</span>
+      </button>
+      <button className="dropdown-item" onClick={() => {
+        onShowComposer();
+        onClose();
+      }}>
+        <span className="dropdown-icon">✍️</span>
+        <span>Create Daily Share</span>
+      </button>
+      <button className="dropdown-item" onClick={() => {
+        onShowChallenge();
+        onClose();
+      }}>
+        <span className="dropdown-icon">🎯</span>
+        <span>Daily Challenges</span>
+      </button>
+    </div>
+  );
+};
+
 const DailyChallengeModal = ({ onClose }) => {
   const todayChallenge = gamification.getTodaysChallenge();
   const challengeData = DAILY_CHALLENGES[todayChallenge.id];
+
+  // Handle case where challenge data might not exist
+  if (!challengeData) {
+    return (
+      <div className="daily-challenge-modal-overlay" onClick={onClose}>
+        <div className="daily-challenge-modal" onClick={e => e.stopPropagation()}>
+          <h2>🎯 Daily Challenge</h2>
+          <div className="challenge-content">
+            <div className="challenge-icon">❌</div>
+            <h3>Challenge Unavailable</h3>
+            <p>There seems to be an issue loading today's challenge.</p>
+          </div>
+          <button className="close-button" onClick={onClose}>
+            Okay
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="daily-challenge-modal-overlay" onClick={onClose}>
@@ -88,29 +273,340 @@ const DailyChallengeModal = ({ onClose }) => {
   );
 };
 
+const GifPicker = ({ onGifSelect, onClose }) => {
+  const [gifSearch, setGifSearch] = useState('');
+  const [trendingGifs, setTrendingGifs] = useState([]);
+  const [searchedGifs, setSearchedGifs] = useState([]);
+  const [showSearchInput, setShowSearchInput] = useState(false);
+
+  // Predefined popular gifs/animated stickers
+  const popularGifs = [
+    '🎉', '✨', '💫', '🌈', '🎊', '🎈', '🎆', '🎇',
+    '🎵', '🎶', '🎸', '🎹', '🎷', '🥁', '🎺', '🎤',
+    '🚀', '⚡', '💥', '🌀', '🌪️', '🔥', '💯', '⭐',
+    '🏆', '🎯', '🎪', '🎭', '🎨', '🎭', '🎪', '🎩',
+    '🐱', '🐭', '🐶', '🐷', '🦄', '🐝', '🐌', '🦋',
+    '🌸', '🌺', '🌻', '🌹', '🌷', '🍀', '🌾', '🐾'
+  ];
+
+  // Simulate GIPHY-like trending/popular content
+  const getTrendingGifs = () => [
+    '😄', '😂', '😍', '❤️', '🔥', '💯', '🚀', '✨',
+    '🎉', '💫', '🌟', '⭐', '🎊', '🎈', '🎆', '🎇',
+    '🕺', '💃', '🤩', '🥳', '🤗', '🤪', '🥺', '😘',
+    '🎵', '🎶', '🎤', '🎹', '🥁', '🎷', '🎺', '🎸',
+    '⚡', '💥', '🌀', '🌈', '🔮', '💎', '💐', '🍾'
+  ];
+
+  useEffect(() => {
+    setTrendingGifs(getTrendingGifs());
+  }, []);
+
+  const handleSearch = (searchTerm) => {
+    if (!searchTerm.trim()) {
+      setSearchedGifs([]);
+      return;
+    }
+
+    // Simulate search results based on keywords
+    const searchResults = [];
+    const searchLower = searchTerm.toLowerCase();
+
+    const allPossibleGifs = [
+      '👏', '🤝', '👍', '👌', '🙌', '🙏', '👋', '✋',
+      '🌟', '⭐', '🌙', '☀️', '🌈', '☁️', '⚡', '🌪️',
+      '👍', '👎', '👊', '✌️', '🤞', '👈', '👉', '👆',
+      '🎯', '🏀', '⚽', '🏈', '🎮', '🎵', '🎤', '🎬',
+      '💝', '💖', '💗', '💓', '💞', '💕', '💌', '💘',
+      '🦋', '🐝', '🦄', '🦊', '🐱', '🐶', '🐷', '🐮'
+    ];
+
+    if (searchLower.includes('happy') || searchLower.includes('joy')) {
+      searchResults.push('😊', '😄', '😀', '🥳', '🤗', '🤩');
+    }
+    if (searchLower.includes('love') || searchLower.includes('heart')) {
+      searchResults.push('❤️', '💕', '💖', '💗', '💓', '💞', '💝', '💘');
+    }
+    if (searchLower.includes('fire') || searchLower.includes('hot')) {
+      searchResults.push('🔥', '💥', '⚡');
+    }
+    if (searchLower.includes('cool') || searchLower.includes('awesome')) {
+      searchResults.push('🥳', '🤩', '💯', '🎉', '✨');
+    }
+
+    setSearchedGifs(searchResults.length > 0 ? searchResults : allPossibleGifs.slice(0, 20));
+  };
+
+  return (
+    <div className="gif-picker-overlay" onClick={onClose} style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 2000
+    }}>
+      <div className="gif-picker" onClick={e => e.stopPropagation()} style={{
+        background: '#000000',
+        border: '1px solid #00ff00',
+        padding: '20px',
+        maxWidth: '400px',
+        width: '90%',
+        maxHeight: '500px',
+        overflow: 'hidden',
+        color: '#00ff00'
+      }}>
+        <div className="gif-header" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '15px'
+        }}>
+          <h3 style={{ color: '#00ff00', margin: 0 }}>Choose GIF</h3>
+          <button onClick={onClose} style={{
+            background: '#000000',
+            color: '#00ff00',
+            border: '1px solid #00ff00',
+            padding: '5px 10px',
+            cursor: 'pointer'
+          }}>
+            ✕
+          </button>
+        </div>
+
+        <div className="gif-tabs" style={{ marginBottom: '15px' }}>
+          <button
+            onClick={() => setShowSearchInput(false)}
+            style={{
+              background: showSearchInput ? '#000000' : '#00ff00',
+              color: showSearchInput ? '#00ff00' : '#000000',
+              border: '1px solid #00ff00',
+              padding: '8px 15px',
+              cursor: 'pointer',
+              marginRight: '5px'
+            }}
+          >
+            Trending
+          </button>
+          <button
+            onClick={() => setShowSearchInput(!showSearchInput)}
+            style={{
+              background: showSearchInput ? '#00ff00' : '#000000',
+              color: showSearchInput ? '#000000' : '#00ff00',
+              border: '1px solid #00ff00',
+              padding: '8px 15px',
+              cursor: 'pointer'
+            }}
+          >
+            {showSearchInput ? 'Cancel' : 'Search'}
+          </button>
+        </div>
+
+        {showSearchInput && (
+          <input
+            type="text"
+            placeholder="Search GIFs..."
+            value={gifSearch}
+            onChange={(e) => setGifSearch(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch(gifSearch)}
+            style={{
+              width: '100%',
+              padding: '8px',
+              border: '1px solid #00ff00',
+              background: '#000000',
+              color: '#00ff00',
+              marginBottom: '10px',
+              fontFamily: 'inherit'
+            }}
+          />
+        )}
+
+        <div className="gif-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(6, 1fr)',
+          gap: '8px',
+          maxHeight: '300px',
+          overflowY: 'auto',
+          paddingRight: '5px'
+        }}>
+          {(gifSearch && searchedGifs.length > 0 ? searchedGifs : trendingGifs).map((gif, index) => (
+            <button
+              key={index}
+              className="gif-button"
+              onClick={() => onGifSelect(gif)}
+              style={{
+                background: '#111111',
+                border: '1px solid #333',
+                padding: '8px',
+                cursor: 'pointer',
+                fontSize: '20px',
+                borderRadius: '4px',
+                transition: 'all 0.2s',
+                minHeight: '45px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseOver={(e) => e.target.style.borderColor = '#00ff00'}
+              onMouseOut={(e) => e.target.style.borderColor = '#333'}
+            >
+              {gif}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const EmojiPicker = ({ onEmojiSelect, onClose }) => {
+  const [activeTab, setActiveTab] = useState('emoji');
+  const [easterEggMode, setEasterEggMode] = useState(false);
+
   const emojis = [
+    // Faces & Emotions
     '😀', '😂', '🥰', '😊', '🤔', '😉', '😍', '🥺',
     '😎', '🤩', '😢', '😡', '👍', '👎', '❤️', '🔥',
-    '✨', '⭐', '🌟', '💯', '😏', '🤤', '🤑', '🤗',
-    '😈', '👻', '💀', '🙈', '🙉', '🙊', '🦊', '🐱'
+    // Animals & Nature
+    '🐱', '🐶', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼',
+    '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🦄',
+    // Food & Drinks
+    '🍕', '🍔', '🍟', '🌭', '🍿', '🍩', '🍪', '🎂',
+    '🍰', '🧁', '🍫', '🍬', '🍭', '🍮', '🍯', '🧃',
+    // Activities & Objects
+    '⚽', '🏀', '🏈', '🎮', '🎸', '🎹', '🎤', '🎬',
+    '📚', '💻', '📱', '💡', '✈️', '🚗', '🚀', '⏰',
+    // Symbols & Shapes
+    '✨', '⭐', '🌟', '💫', '💯', '🔔', '🔥', '⚡',
+    '💦', '❄️', '🌈', '🧲', '💎', '🔮', '🎪', '🎊',
+    // More Faces
+    '🥳', '🤗', '🤪', '😜', '😝', '🤤', '😴', '🤯',
+    '🤗', '🤠', '🥸', '😷', '🤢', '🤮', '🤧', '🥱',
+    // Hand Gestures
+    '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏',
+    '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆',
+    // Travel & Places
+    '🌍', '🌎', '🌏', '🌌', '🌙', '☀️', '🌞', '⭐',
+    '⛅', '🌤️', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '☃️',
+    // Vehicles
+    '🚗', '🚕', '🚙', '🚎', '🏎️', '🚓', '🚑', '🚒',
+    '🚐', '🚚', '🚛', '🚜', '🏍️', '🛵', '🚲', '🛴',
+    // Special Easter Egg Emojis (accessible by clicking header 3x)
+    '💩', '🤡', '👻', '🎃', '😈', '👹', '👺', '🎭',
+    '🕶️', '🐔', '🦀', '🐠', '🌵', '🍄', '🌚', '🌝'
   ];
+
+  const handleHeaderClick = () => {
+    setActiveTab(prev => prev === 'gif' ? 'emoji' : 'gif');
+  };
 
   return (
     <div className="emoji-picker-overlay" onClick={onClose}>
       <div className="emoji-picker" onClick={e => e.stopPropagation()}>
-        <h3>Choose an emoji</h3>
-        <div className="emoji-grid">
-          {emojis.map(emoji => (
-            <button
-              key={emoji}
-              className="emoji-button"
-              onClick={() => onEmojiSelect(emoji)}
-            >
-              {emoji}
-            </button>
-          ))}
+        <div className="emoji-header" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '15px'
+        }}>
+          <h3 onClick={handleHeaderClick} style={{
+            color: '#00ff00',
+            margin: 0,
+            cursor: 'pointer',
+            fontSize: '1.1rem'
+          }}>
+            Choose {activeTab === 'emoji' ? 'Emoji' : 'GIF'}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: '#000000',
+              color: '#00ff00',
+              border: '1px solid #00ff00',
+              padding: '5px 10px',
+              cursor: 'pointer'
+            }}
+          >
+            ✕
+          </button>
         </div>
+
+        <div className="emoji-tabs" style={{ marginBottom: '15px' }}>
+          <button
+            onClick={() => setActiveTab('emoji')}
+            style={{
+              background: activeTab === 'emoji' ? '#00ff00' : '#000000',
+              color: activeTab === 'emoji' ? '#000000' : '#00ff00',
+              border: '1px solid #00ff00',
+              padding: '8px 15px',
+              cursor: 'pointer',
+              marginRight: '5px'
+            }}
+          >
+            😊
+          </button>
+          <button
+            onClick={() => setActiveTab('gif')}
+            style={{
+              background: activeTab === 'gif' ? '#00ff00' : '#000000',
+              color: activeTab === 'gif' ? '#000000' : '#00ff00',
+              border: '1px solid #00ff00',
+              padding: '8px 15px',
+              cursor: 'pointer'
+            }}
+          >
+            GIF
+          </button>
+        </div>
+
+        {activeTab === 'emoji' && (
+          <div className="emoji-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(8, 1fr)',
+            gap: '8px',
+            maxHeight: '300px',
+            overflowY: 'auto',
+            paddingRight: '5px'
+          }}>
+            {emojis.map(emoji => (
+              <button
+                key={emoji}
+                className="emoji-button"
+                onClick={() => onEmojiSelect(emoji)}
+                style={{
+                  background: '#111111',
+                  border: '1px solid #333',
+                  padding: '8px',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  borderRadius: '4px',
+                  transition: 'all 0.2s',
+                  minHeight: '45px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseOver={(e) => e.target.style.borderColor = '#00ff00'}
+                onMouseOut={(e) => e.target.style.borderColor = '#333'}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'gif' && (
+          <div className="gif-display">
+            <GifPicker
+              onGifSelect={onEmojiSelect}
+              onClose={onClose}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -193,7 +689,14 @@ const App = () => {
   const [gamificationPoints, setGamificationPoints] = useState(gamification.getPoints());
   const [unlockedAchievements, setUnlockedAchievements] = useState(gamification.getAchievements());
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [selectedEmoji, setSelectedEmoji] = useState('');
+  const [showDailyDropdown, setShowDailyDropdown] = useState(false);
+  const [showDailyComposer, setShowDailyComposer] = useState(false);
+  const [showDailyFeed, setShowDailyFeed] = useState(false);
+  const [dailyShares, setDailyShares] = useState(JSON.parse(localStorage.getItem('daily_shares') || '[]'));
+  const [selectedDailyType, setSelectedDailyType] = useState('fact');
+
+  // World news state
+  const [showWorldNews, setShowWorldNews] = useState(false);
 
   useEffect(() => {
     // Initialize username from localStorage
@@ -231,10 +734,8 @@ const App = () => {
       }
     });
 
-    // Check for daily challenge on load
-    if (!gamification.getTodaysChallenge().completed) {
-      setTimeout(() => setShowDailyChallenge(true), 1000);
-    }
+    // Daily challenge is now accessible via the points button
+    // setTimeout(() => setShowDailyChallenge(true), 1000);
   }, []);
 
   useEffect(() => {
@@ -454,10 +955,63 @@ const App = () => {
     setShowAchievements(true);
   };
 
+  // Daily handlers
+  const handleShowDailyDropdown = () => {
+    setShowDailyDropdown(!showDailyDropdown);
+  };
+
+  const handleShowDailyComposer = () => {
+    setShowDailyComposer(true);
+    setShowDailyDropdown(false);
+  };
+
+  const handleShowDailyFeed = () => {
+    setShowDailyFeed(true);
+    setShowDailyDropdown(false);
+  };
+
+  const handleDailyShare = (newShare) => {
+    const updatedShares = [...dailyShares, newShare];
+    setDailyShares(updatedShares);
+    localStorage.setItem('daily_shares', JSON.stringify(updatedShares));
+
+    // Gamification: Award points for sharing daily content
+    const typeData = DAILY_ACTIVITY_TYPES[newShare.type.toUpperCase()];
+    if (typeData) {
+      gamification.addPoints(typeData.points, `Daily ${typeData.title}`);
+
+      // Track different content types shared for Culture Sharer achievement
+      gamification.incrementStat(`daily_${newShare.type}_shared`);
+    }
+
+    gamification.updateChallengeProgress('DAILY_PING', 1);
+  };
+
+  const handleLikeDailyShare = (shareId) => {
+    const updatedShares = dailyShares.map(share =>
+      share.id === shareId
+        ? { ...share, likes: share.liked ? share.likes - 1 : share.likes + 1, liked: !share.liked }
+        : share
+    );
+
+    setDailyShares(updatedShares);
+    localStorage.setItem('daily_shares', JSON.stringify(updatedShares));
+
+    // Gamification: Award points for receiving likes
+    const share = updatedShares.find(s => s.id === shareId);
+    if (!share.liked && share.likes === 1) {
+      gamification.addPoints(5, 'Daily share got its first like');
+    }
+  };
+
+  const handleComposeFromFeed = () => {
+    setShowDailyFeed(false);
+    setShowDailyComposer(true);
+  };
+
   const handleShowDailyChallenge = () => {
     setShowDailyChallenge(true);
-    // Update daily challenge progress based on current activity
-    gamification.updateChallengeProgress('CHAT_INITIATE', 1); // Simplified
+    setShowDailyDropdown(false);
   };
 
   const handleKeyPress = (e) => {
@@ -518,7 +1072,7 @@ const App = () => {
 
       <div className="chat-header">
         <div className="chat-title">
-          <h1>🔒 Encrypted Messenger</h1>
+          <h1>🌴 Eko</h1>
         </div>
         <div className="user-info">
           <div className="gamification-info">
@@ -528,6 +1082,9 @@ const App = () => {
             <button className="gamification-button achievements-button" onClick={handleShowAchievements}>
               🏆 {unlockedAchievements.length}
             </button>
+            <button className="gamification-button" onClick={() => setShowWorldNews(true)}>
+              📰 News
+            </button>
           </div>
           <span className="username-display">{username}</span>
           <span className={`connection-bubble ${connectionStatus}`}></span>
@@ -536,7 +1093,7 @@ const App = () => {
 
       <div className="connection-panel">
         <div className="peer-info">
-          <p className="peer-id">ID: {peerId}</p>
+          <p className="peer-id">{peerId}</p>
           {friendUsername && (
             <p className="friend-name">Connected to: {friendUsername}</p>
           )}
@@ -627,6 +1184,29 @@ const App = () => {
           </button>
         </div>
       </div>
+
+      {showWorldNews && (
+        <div className="news-section">
+          <h2>World News Blog</h2>
+          <div className="news-grid">
+            <div className="news-item">
+              <WorldNewsBlog region="Americas" />
+            </div>
+            <div className="news-item">
+              <WorldNewsBlog region="Europe" />
+            </div>
+            <div className="news-item">
+              <WorldNewsBlog region="Asia" />
+            </div>
+            <div className="news-item">
+              <WorldNewsBlog region="Africa & Oceania" />
+            </div>
+          </div>
+          <button className="close-button" onClick={() => setShowWorldNews(false)}>
+            Close News
+          </button>
+        </div>
+      )}
     </div>
   );
 };
