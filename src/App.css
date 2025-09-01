@@ -576,11 +576,128 @@ div:-ms-fullscreen {
   mix-blend-mode: screen !important;
 }
 
+/* Cross-platform UI Enhancements */
+.App {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  scroll-behavior: smooth;
+}
+
+/* Enable selection for input fields */
+.App input,
+.App textarea,
+.App [contenteditable] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Smooth scrolling across platforms */
+* {
+  -webkit-scroll-behavior: smooth;
+  scroll-behavior: smooth;
+}
+
+/* Enhanced scrollbar support cross-platform */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111111;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ffffff;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-color) #111111;
+}
+
+/* Improve touch interface */
+input, textarea, button, select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Ensure modal content scrolls properly */
+.achievement-modal,
+.daily-challenge-modal,
+.emoji-picker,
+.daily-composer,
+.daily-feed,
+.daily-challenge-modal {
+  overflow-y: auto;
+  /* Better scrolling on mobile */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Better modal positioning */
+.achievement-modal-overlay,
+.daily-challenge-modal-overlay,
+.emoji-picker-overlay,
+.daily-composer-overlay,
+.daily-feed-overlay,
+.daily-challenge-modal-overlay {
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+/* Enhanced message scrolling */
+.message-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-container::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+.message-container::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 0;
+}
+
+/* Better textarea handling */
+textarea {
+  resize: vertical;
+  min-height: 60px;
+  max-height: 120px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Enhanced button press feedback */
+button:active {
+  transform: scale(0.98);
+}
+
+/* Loading screen spinner animation enhancement */
+.loading-spinner {
+  animation-fill-mode: both;
+  animation-timing-function: ease-in-out;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .App {
     max-width: 100vw;
     width: 100vw;
+    /* Better mobile touch */
+    touch-action: manipulation;
   }
 
   .chat-header {
@@ -618,6 +735,8 @@ div:-ms-fullscreen {
 
   .message-container {
     padding: 10px 15px;
+    /* Touch gesture support */
+    touch-action: pan-y;
   }
 
   .message {
@@ -626,10 +745,50 @@ div:-ms-fullscreen {
 
   .input-area {
     padding: 10px 15px;
+    gap: 8px;
+  }
+
+  .message-input {
+    padding: 12px 15px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .send-button {
+    white-space: nowrap;
+    min-width: 65px;
+  }
+
+  .gamification-button {
+    min-width: 35px;
+    min-height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Better mobile modal spacing */
+  .achievement-modal,
+  .daily-challenge-modal,
+  .emoji-picker,
+  .daily-composer,
+  .daily-feed,
+  .daily-challenge-modal {
+    margin: 20px;
+    max-height: calc(100vh - 40px);
   }
 
   .username-modal {
     padding: 15px;
+    margin: 20px;
+  }
+
+  /* Improve mobile news grid */
+  .news-grid {
+    gap: 15px;
+  }
+
+  .news-item {
+    height: 300px; /* Shorter on mobile */
   }
 }
 
