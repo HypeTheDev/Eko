@@ -1,6 +1,6 @@
 {
-  "name": "webappv1",
-  "version": "0.1.0",
+  "name": "eko",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
     "@heroicons/react": "^2.2.0",
